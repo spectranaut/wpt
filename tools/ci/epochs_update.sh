@@ -1,5 +1,5 @@
 #!/bin/bash
-set -ex
+set -eux -o pipefail
 
 SCRIPT_DIR=$(cd $(dirname "$0") && pwd -P)
 WPT_ROOT=$SCRIPT_DIR/../..
