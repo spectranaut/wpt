@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html  lang="en" >
+<head>
+<meta charset="utf-8"/>
+<title>:lang(de-DE)"</title>
+<link rel='author' title='Richard Ishida' href='mailto:ishida@w3.org'>
+<link rel='help' href='https://www.w3.org/TR/selectors-4/#the-lang-pseudo'>
+<script src="/resources/testharness.js"></script>
+<script src="/resources/testharnessreport.js"></script>
+<style type='text/css'>
+.test div { width: 50px; }
+ 		#colonlangcontroltest { color: red; font-weight: bold; width: 400px; }
+		#colonlangcontroltest:lang(xx) { display:none; }
+[id^='box']:lang(de-DE) { width: 100px; }
+</style>
+</head>
+<body>
+
+
+
+<div class="test"><div id="box1" lang="de-Latn-DE">&#xA0;</div></div>
+<div class="test"><div id="box2" lang="de-x-de">&#xA0;</div></div>
+<div class="test"><div id="box3" lang="de-DE">&#xA0;</div></div>
+<div class="test"><div id="box4" lang="de-Latn-DE-1996">&#xA0;</div></div>
+<div class="test"><div id="box5" lang="de-DE-x-goethe">&#xA0;</div></div>
+<p lang='xx' id='colonlangcontroltest'>This test failed because it relies on :lang for results, but :lang is not supported by this browser.
+
+
+<!--Notes:
+This tests a detail related to :lang support. If :lang is not supported, a message will appear and the test will fail.
+-->
+<script>
+test(function() {
+assert_equals(document.getElementById('colonlangcontroltest').offsetWidth, 0)
+assert_equals(document.getElementById('box1').offsetWidth, 100);
+assert_equals(document.getElementById('box2').offsetWidth, 50);
+assert_equals(document.getElementById('box3').offsetWidth, 100);
+assert_equals(document.getElementById('box4').offsetWidth, 100);
+assert_equals(document.getElementById('box5').offsetWidth, 100);
+}, "A :lang value with language and region subtags MUST match a lang attribute value containing intermediate subtags not specified in the language range, unless it contains intermediary singleton tags.");
+</script>
+
+<div id='log'></div>
+
+</body>
+</html>
