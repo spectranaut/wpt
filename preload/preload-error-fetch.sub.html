@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<head>
+<title>link rel=preload with various errors/non-errors</title>
+<script src="/resources/testharness.js"></script>
+<script src="/resources/testharnessreport.js"></script>
+<script src="resources/preload_helper.js"></script>
+<script src="/service-workers/service-worker/resources/test-helpers.sub.js"></script>
+<meta http-equiv="Content-Security-Policy"
+      content="connect-src 'self' http://{{hosts[alt][]}}:{{ports[http][0]}}">
+<script>
+function startPreload(t, url, callback, shouldSuccessPreload, shouldWait) {
+  const link = document.createElement('link');
+  link.setAttribute('rel', 'preload');
+  link.setAttribute('as', 'fetch');
+  link.setAttribute('crossorigin', 'anonymous');
+  link.setAttribute('href', url);
+  link.onload = t.step_func_done(() => {
+    if (shouldWait) {
+      callback();
+    }
+    if (!shouldSuccessPreload) {
+      assert_unreached('preload onload');
+    }
+  });
+  link.onerror = t.step_func_done(() => {
+    if (shouldWait) {
+      callback();
+    }
+    if (shouldSuccessPreload) {
+      assert_unreached('preload onerror');
+    }
+  });
+  document.head.appendChild(link);
+  if (!shouldWait) {
+    callback();
+  }
+}
+
+function runTestXHR(description, shouldSuccessPreload, shouldSuccessMain,
+                    shouldWait, url) {
+  const tPreload = async_test(description + ': preload events');
+  const tXHR = async_test(description + ': main');
+
+  const runMainTest = () => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('GET', url, true);
+    if (shouldSuccessMain) {
+      xhr.onload = tXHR.step_func_done(() => {
+        verifyNumberOfResourceTimingEntries(url, 1);
+      });
+      xhr.onerror = tXHR.unreached_func('XHR onerror');
+    } else {
+      xhr.onload = tXHR.unreached_func('XHR onload');
+      xhr.onerror = tXHR.step_func_done(() => {
+        verifyNumberOfResourceTimingEntries(url, 1);
+      });
+    }
+    xhr.onabort = tXHR.unreached_func('XHR onabort');
+    xhr.send();
+    tXHR.step_timeout(tXHR.unreached_func('timeout'), 3000);
+  };
+
+  startPreload(tPreload, url, runMainTest, shouldSuccessPreload, shouldWait);
+}
+
+function runTestFetch(description, shouldSuccessPreload, shouldSuccessMain, shouldWait, url) {
+  const tPreload = async_test(description + ': preload events');
+  const tFetch = async_test(description + ': main');
+
+  const runMainTest = () => {
+    let responseResolved = false;
+    if (shouldSuccessMain) {
+      fetch(url)
+        .then(tFetch.step_func(e => {
+                responseResolved = true;
+                return e.text();
+              }),
+              tFetch.unreached_func('fetch() rejected'))
+        .then(tFetch.step_func_done(() => {
+                verifyNumberOfResourceTimingEntries(url, 1);
+              }),
+              tFetch.unreached_func('text() rejected'));
+    } else {
+      promise_rejects_js(tFetch, TypeError, fetch(url))
+        .then(tFetch.step_func_done(() => {
+                verifyNumberOfResourceTimingEntries(url, 1);
+              }));
+    }
+    tFetch.step_timeout(() => {
+      if (responseResolved) {
+        tFetch.unreached_func('text() timeout')();
+      } else {
+        tFetch.unreached_func('fetch() timeout')();
+      }
+    }, 3000);
+  };
+
+  startPreload(tPreload, url, runMainTest, shouldSuccessPreload, shouldWait);
+}
+
+function runTest(description, shouldSuccessPreload, shouldSuccessMain, url) {
+  // The main request is started just after preloading is started and thus
+  // HTTP response headers and errors are not observed yet.
+  runTestXHR(description + ' (xhr, immediate)',
+      shouldSuccessPreload, shouldSuccessMain, false, url + 'xhr-immediate');
+  runTestFetch(description + ' (fetch, immediate)',
+      shouldSuccessPreload, shouldSuccessMain, false, url + 'fetch-immediate');
+
+  // The main request is started after load/error event of <link rel=preload>
+  // and thus the HTTP response headers and errors are already observed.
+  runTestXHR(description + ' (xhr, after preload completion)',
+      shouldSuccessPreload, shouldSuccessMain, true, url + 'xhr-wait');
+  runTestFetch(description + ' (fetch, after preload completion)',
+      shouldSuccessPreload, shouldSuccessMain, true, url + 'fetch-wait');
+}
+
+// Successful response: non-ok status is not considered as a network error.
+runTest('404', true, true,
+    '/fetch/api/resources/status.py?code=404&label=');
+
+// Successful response: Successful CORS check.
+runTest('CORS', true, true,
+    'http://{{hosts[alt][]}}:{{ports[http][0]}}/fetch/api/resources/cors-top.txt?label=');
+
+// A network error: Failed CORS check.
+runTest('CORS-fail', false, false,
+    'http://{{hosts[alt][]}}:{{ports[http][0]}}/fetch/api/resources/top.txt?label=');
+
+// A network error: Failed CSP check on redirect.
+runTest('CSP-fail', false, false,
+    '/common/redirect.py?location=http://{{hosts[alt][]}}:{{ports[http][1]}}/fetch/api/resources/cors-top.txt?label=');
+</script>
