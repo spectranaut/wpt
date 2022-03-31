@@ -343,16 +343,18 @@ class FakeSerialService {
   addPort(info) {
     let portInfo = {};
     if (info?.usbVendorId !== undefined) {
-      portInfo.hasUsbVendorId = true;
-      portInfo.usbVendorId = info.usbVendorId;
+      portInfo.hasVendorId = true;
+      portInfo.vendorId = info.usbVendorId;
     }
     if (info?.usbProductId !== undefined) {
-      portInfo.hasUsbProductId = true;
-      portInfo.usbProductId = info.usbProductId;
+      portInfo.hasProductId = true;
+      portInfo.productId = info.usbProductId;
     }
 
     let token = ++this.nextToken_;
     portInfo.token = {high: 0n, low: BigInt(token)};
+    portInfo.path = {path: `/dev/fake/${token}`};
+    portInfo.deviceInstanceId = `fake-device-instance-id-${token}`;
 
     let record = {
       portInfo: portInfo,
@@ -419,6 +421,10 @@ class FakeSerialService {
     } else {
       return {port: null};
     }
+  }
+
+  async forgetPort(info) {
+    // Permissions are currently untestable through WPT.
   }
 }
 
