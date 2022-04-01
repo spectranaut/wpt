@@ -15,13 +15,12 @@
 <script src="/service-workers/service-worker/resources/test-helpers.sub.js"></script>
 <body>
 <script>
-
 const { HTTPS_ORIGIN, HTTPS_NOTSAMESITE_ORIGIN } = get_host_info();
 // Map of lock_id => function that releases a lock.
 const held = new Map();
 let next_lock_id = 1;
 
-async function run_test(t) {
+async function third_party_test(t) {
   let target_url = HTTPS_ORIGIN + '/web-locks/resources/iframe.html';
   target_url = new URL(
     `./resources/partitioned-parent.html?target=${encodeURIComponent(target_url)}`,
@@ -43,7 +42,7 @@ async function run_test(t) {
   const w = window.open(target_url);
   const result = await new Promise(resolve => window.onmessage = resolve);
 
-  // When 3rd party storage partitioning is enabled, the iFrame should be able
+  // When 3rd party storage partitioning is enabled, the iframe should be able
   // to aquire a lock with the same name as one exclusively held by the opener
   // of its top window, even when that opener has the same origin.
   assert_equals(result.data.failed, undefined,
@@ -58,7 +57,63 @@ async function run_test(t) {
 }
 
 promise_test(t => {
-  return run_test(t);
+  return third_party_test(t);
 }, 'WebLocks of an iframe under a 3rd-party site are partitioned');
+
+
+// Optional Test: Checking for paritioned web locks in an A->B->A
+// (nested-iframe with cross-site ancestor chain) scenario.
+
+// Map of lock_id => function that releases a lock.
+const held_2 = new Map();
+let next_lock_id_2 = 1;
+
+async function nested_iframe_test(t) {
+  // Obtain the parent iframe.
+  let parent_iframe_url = HTTPS_ORIGIN + '/web-locks/resources/iframe-parent.html';
+  // Embed the parent iframe content as a cross-origin iframe (A->B).
+  parent_iframe_url = new URL(
+    `./resources/partitioned-parent.html?target=${encodeURIComponent(parent_iframe_url)}`,
+    HTTPS_NOTSAMESITE_ORIGIN + self.location.pathname);
+  // Obtain the child iframe.
+  let child_iframe_url = HTTPS_ORIGIN + '/web-locks/resources/iframe.html';
+  // Embed the child iframe inside the parent iframe;
+  // Child has the same origin as the main frame (A->B->A).
+  child_iframe_url = new URL(`./resources/iframe-parent.html?target=${encodeURIComponent(child_iframe_url)}`,
+    HTTPS_ORIGIN + self.location.pathname);
+
+  navigator.locks.request('testLock', {mode: 'exclusive', ifAvailable: true},
+        lock => {
+          if (lock === null) {
+            assert_true(false)
+            return;
+          }
+          // Obtain and store the release functions for clean-up
+          let lock_id = next_lock_id_2++;
+          let release;
+          const promise = new Promise(r => { release = r; });
+          held_2.set(lock_id, release);
+          return promise;
+        });
+  // Attempt to open A2 from A1 in the scheme A1->B->A2.
+  const w = window.open(child_iframe_url);
+  const result = await new Promise(resolve => window.onmessage = resolve);
+
+  // With third-party storage partitioning enabled, the first-party iframe
+  // should fail to acquire the lock as it has a cross-site ancestor.
+  assert_equals(result.data.failed, undefined,
+      'The 1p iframe failed to acquire the lock');
+
+  t.add_cleanup(() => {
+    w.close()
+    for(let i = 1; i < next_lock_id_2; i++){
+      held.get(i)();
+    }
+  });
+}
+
+promise_test(t => {
+  return nested_iframe_test(t);
+}, 'WebLocks of a nested iframe with a cross-site ancestor are partitioned');
 </script>
 </body>
