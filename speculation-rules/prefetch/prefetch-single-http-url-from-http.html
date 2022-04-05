@@ -1,0 +1,11 @@
+<!DOCTYPE html>
+<script src="/resources/testharness.js"></script>
+<script src="/resources/testharnessreport.js"></script>
+<script src="/common/dispatcher/dispatcher.js"></script>
+<script src="/common/utils.js"></script>
+<script src="resources/utils.sub.js"></script>
+<script>
+  promise_test(async t => {
+    excpect_prefetch_failure(await prefetch_test(t, /*https_src_url*/ false, /*https_prefetch_url*/false));
+  }, "test single http url prefetch from a http url");
+</script>
