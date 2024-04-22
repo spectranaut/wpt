@@ -1,0 +1,17 @@
+<!doctype html>
+<meta charset=utf-8>
+<title>core-aam: first acacia test</title>
+<script src="/resources/testharness.js"></script>
+<script src="/resources/testharnessreport.js"></script>
+<body>
+  <div id=test role="button"></div>
+  <script>
+    promise_test(function() {
+      return fetch('resources/acacia.py')
+        .then(function(response) {
+            // reponse.body?
+            assert_equals(response.statusText, 'Found');
+          });
+    }, "An acacia test!");
+  </script>
+</body>
