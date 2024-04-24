@@ -3,15 +3,23 @@
 <title>core-aam: first acacia test</title>
 <script src="/resources/testharness.js"></script>
 <script src="/resources/testharnessreport.js"></script>
+
 <body>
   <div id=test role="button"></div>
   <script>
-    promise_test(function() {
-      return fetch('resources/acacia.py')
-        .then(function(response) {
-            // reponse.body?
-            assert_equals(response.statusText, 'Found');
-          });
+    promise_test(async () => {
+      const params = {
+          test_url: window.location.href,
+          id: 'test',
+      };
+      const url = 'resources/acacia.py?' + new URLSearchParams(params);
+      console.log({url});
+      const response = await fetch(url);
+      console.log({response});
+      const node = await response.json();
+      console.log({node});
+      assert_equals(response.statusText, 'Found');
+      assert_equals(node.role, 'push button');
     }, "An acacia test!");
   </script>
 </body>
