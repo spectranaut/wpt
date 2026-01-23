@@ -651,6 +651,8 @@ class TestRunnerManager(threading.Thread):
         executor_kwargs["browser_settings"] = self.browser.browser_settings
         executor_browser_cls, executor_browser_kwargs = self.browser.browser.executor_browser()
         executor_browser_kwargs["product_name"] = self.product_name
+        print("We are in get_executor_implementation.......................................")
+
         return ExecutorImplementation(impl.executor_cls,
                                       executor_kwargs,
                                       executor_browser_cls,
@@ -1076,6 +1078,10 @@ class ManagerGroup:
         self.stop_flag = None
         self.logger = structuredlog.StructuredLogger(suite_name)
 
+        print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+        print("We do have the product in the manager group: " + product_name);
+
+
     def __enter__(self):
         return self
 
@@ -1087,6 +1093,8 @@ class ManagerGroup:
         test_queue, size = self.test_queue_builder.make_queue(tests)
         self.logger.info("Using %i child processes" % size)
         self.stop_flag = StopFlag(size)
+
+        print("?????????????????????????? suite_name: " + self.suite_name)
 
         for idx in range(size):
             manager = TestRunnerManager(self.suite_name,
