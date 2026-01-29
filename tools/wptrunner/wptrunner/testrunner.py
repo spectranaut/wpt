@@ -651,7 +651,6 @@ class TestRunnerManager(threading.Thread):
         executor_kwargs["browser_settings"] = self.browser.browser_settings
         executor_browser_cls, executor_browser_kwargs = self.browser.browser.executor_browser()
         executor_browser_kwargs["product_name"] = self.product_name
-        print("We are in get_executor_implementation.......................................")
 
         return ExecutorImplementation(impl.executor_cls,
                                       executor_kwargs,
